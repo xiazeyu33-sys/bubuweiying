@@ -1,0 +1,10 @@
+# Netlify 部署设置。在 Netlify 里把 Base directory 设为 planner/site，这个文件就会生效。
+# 不需要构建步骤：直接发布这个文件夹。
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"

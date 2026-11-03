@@ -85,6 +85,11 @@ button{font:inherit;color:inherit}
 .goal-text.is-empty{opacity:.75;font-weight:600}
 .countdown{font-size:13px;background:var(--band-chip);border-radius:999px;padding:3px 10px;white-space:nowrap}
 .countdown b{font-family:var(--f-data);font-size:15px}
+.sync{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--band-chip);white-space:nowrap}
+.sync.off{background:var(--on-accent);color:var(--accent)}
+.note-block{background:var(--warn-soft);border-left:4px solid var(--warn);font-size:15px;font-weight:600;padding:14px 16px}
+.note-block a{color:inherit}
+.note .x{float:right;margin:-2px -6px 0 8px}
 .band-btn{background:transparent;border:1.5px solid currentColor;color:inherit;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
 .band-btn:hover{background:var(--band-chip)}
 .goal-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%}
@@ -352,7 +357,16 @@ footer.wrap{padding-block:0 32px;color:var(--muted);font-size:12px}
 .cele .sheet{text-align:center;border:2px solid var(--gold);justify-items:center}
 .cele-t{font-family:var(--f-display);font-weight:900;font-size:26px;line-height:1.25;color:var(--ink)}
 .cele-p{color:var(--muted);font-size:15px;max-width:34ch}
-.famshare{display:grid;gap:6px;padding-top:12px;border-top:1px solid var(--line)}
+.famshare{display:grid;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+.fam-choices{display:grid;gap:12px}
+.fam-choice{display:grid;gap:8px;padding:14px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.fam-choice h3{font-size:15px}
+.fam-err{color:var(--warn);font-size:13px;font-weight:700}
+.keybox{font-family:var(--f-data);font-size:clamp(15px,4.6vw,22px);font-weight:600;letter-spacing:.02em;white-space:nowrap;text-align:center;padding:14px 10px;border:2px dashed var(--accent);border-radius:10px;background:var(--accent-soft);overflow-wrap:anywhere;user-select:all}
+.keybox.small{font-size:clamp(13px,3.8vw,15px);padding:8px 10px;border-width:1.5px}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.danger-link{color:var(--warn)}
+#famKeyIn{font-family:var(--f-data);text-transform:uppercase;letter-spacing:.04em}
 .famshare .cheer-row input{font-family:var(--f-data);font-size:12px}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:50;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
@@ -366,6 +380,7 @@ footer.wrap{padding-block:0 32px;color:var(--muted);font-size:12px}
       <div><div class="brand-name">步步为营</div><div class="brand-sub">每天一小步，全家都看得见</div></div>
     </div>
     <div class="goal" id="goal"><span class="goal-label">目标</span><span class="goal-text is-empty">正在读取…</span></div>
+    <span class="sync" id="sync" role="status">连接中…</span>
     <button class="band-btn" id="meBtn" type="button" hidden>我是…</button>
   </div>
 </header>
@@ -510,15 +525,34 @@ footer.wrap{padding-block:0 32px;color:var(--muted);font-size:12px}
     </ol>
   </details>
 </main>
-<footer class="wrap"><span id="footText">步步为营 · 数据保存在这个页面的共享存储里，只有被分享的人能看到。</span>
-  <button class="link-btn" type="button" id="footShare" data-act="copy-family" hidden>复制家庭链接</button></footer>
+<footer class="wrap"><span id="footText">步步为营 · 数据保存在这个页面的共享存储里，只有被分享的人能看到。</span> <span id="appVer">· 版本 3（密钥版）</span>
+  <button class="link-btn" type="button" id="footShare" data-act="copy-family" hidden>复制邀请链接</button></footer>
 
 <div class="overlay" id="famGate" hidden role="dialog" aria-modal="true" aria-labelledby="famT">
   <div class="sheet">
     <div class="brand-name" id="famT">步步为营</div>
-    <p>这是一个家庭计划板。如果家人已经建好了，请用他们发给你的<b>家庭链接</b>打开，就能看到你们家的计划。</p>
-    <p class="hint">第一次用：由一个人在这里创建，再把家庭链接用微信发给其他人。</p>
-    <button class="btn btn-primary" type="button" id="famCreate">创建我们家的计划板</button>
+    <p>全家共用一个<b>密钥</b>。只有输入同一个密钥的人，才能看到和修改你们家写的内容。</p>
+    <p class="note note-warn" id="famLegacy" hidden></p>
+    <div class="fam-choices" id="famStart">
+      <div class="fam-choice">
+        <h3 id="famCreateH">第一次用</h3>
+        <p class="hint" id="famCreateHint">由一个人创建密钥，再用微信发给家人。</p>
+        <button class="btn btn-primary" type="button" id="famCreate">创建密钥</button>
+      </div>
+      <form class="fam-choice" id="famJoinForm" autocomplete="off">
+        <h3>家人已经创建了密钥</h3>
+        <label class="hint" for="famKeyIn">输入家人发给你的密钥</label>
+        <div class="cheer-row"><input type="text" id="famKeyIn" maxlength="40" spellcheck="false" autocapitalize="characters" placeholder="XXXXX-XXXXX-XXXXX-XXXXX"><button class="btn btn-primary" type="submit" id="famJoinBtn">加入</button></div>
+        <p class="fam-err" id="famErr" role="alert" hidden></p>
+      </form>
+    </div>
+    <div class="fam-choices" id="famMade" hidden>
+      <h3>这是你们家的密钥</h3>
+      <div class="keybox" id="famKeyOut"></div>
+      <div class="btn-row"><button class="btn btn-ghost" type="button" data-act="copy-key">复制密钥</button><button class="btn btn-ghost" type="button" data-act="copy-family">复制邀请链接</button></div>
+      <p class="hint">把密钥用微信发给妈妈和儿子，他们在这个网站点「加入」输入密钥就行。发邀请链接也可以，点开会自动加入。<br>请保存好密钥：换手机或清理浏览器后要重新输入。不要发到群里或公开的地方。</p>
+      <button class="btn btn-primary" type="button" id="famContinue">我记下了，继续</button>
+    </div>
   </div>
 </div>
 
@@ -532,8 +566,11 @@ footer.wrap{padding-block:0 32px;color:var(--muted);font-size:12px}
       <button type="button" data-role="mom"><b>我是妈妈</b><small>看进度、留言鼓励、设定每周小庆祝</small></button>
     </div>
     <div class="famshare" id="famShare" hidden>
-      <p class="hint">家庭链接：用微信发给家人，打开就能一起用。拿到链接的人都能查看和修改，只发给家人，不要发到群里。</p>
-      <div class="cheer-row"><input type="text" id="famLink" readonly aria-label="家庭链接"><button class="btn btn-ghost" type="button" data-act="copy-family">复制</button></div>
+      <p class="hint" id="famShareHint">你们家的密钥（只发给家人）：</p>
+      <div class="keybox small" id="famKeySmall"></div>
+      <input type="text" id="famLink" readonly aria-label="邀请链接" hidden>
+      <div class="btn-row"><button class="btn btn-ghost" type="button" data-act="copy-key" id="copyKeyBtn">复制密钥</button><button class="btn btn-ghost" type="button" data-act="copy-family">复制邀请链接</button></div>
+      <button class="link-btn danger-link" type="button" data-act="leave-family" id="leaveBtn">这台设备换一个密钥</button>
     </div>
     <button class="btn btn-ghost" type="button" id="gateClose" hidden>取消</button>
   </div>
@@ -599,7 +636,7 @@ function relWeek(m) {
 
 /* ======================= state ======================= */
 const S = {
-  store: null, mode: 'connecting', role: null, uid: null, readOnly: false,
+  store: null, mode: 'connecting', role: null, uid: null, readOnly: false, isOwner: false, hasClaude: false,
   view: 'today', selDate: today(), weekStart: mondayOf(today()),
   windowStart: addDays(mondayOf(today()), -49),           // 8 weeks of history are loaded
   tasks: new Map(), days: new Map(), cheers: new Map(), rewards: new Map(), reviews: new Map(), ideas: new Map(),
@@ -719,11 +756,18 @@ function firestoreStore(fdb, fid) {
   };
 }
 const FAMILY_RE = /^[A-Za-z0-9_-]{32,64}$/;
-function newFamilyId() {
-  const b = new Uint8Array(24); crypto.getRandomValues(b);
-  return btoa(String.fromCharCode.apply(null, b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+// A family key is 20 symbols from Crockford's base32 (no I, L, O, U), shown as XXXXX-XXXXX-XXXXX-XXXXX: 100 random bits.
+// The database never sees the key itself, only SHA-256("bbwy:" + key) as the family's folder name.
+const KEY_ALPHA = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const KEY_RE = /^[0-9A-HJKMNP-TV-Z]{20}$/;
+const normKey = s => String(s || '').toUpperCase().replace(/[\s-]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1').replace(/U/g, 'V');
+const fmtKey = k => k.match(/.{1,5}/g).join('-');
+function newKey() { const b = new Uint8Array(20); crypto.getRandomValues(b); return Array.from(b, x => KEY_ALPHA[x & 31]).join(''); }
+async function familyIdOf(k) {
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bbwy:' + k)));
+  return btoa(String.fromCharCode.apply(null, d)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-const familyLink = () => S.familyId ? location.origin + location.pathname + '#f=' + S.familyId : '';
+const familyLink = () => !S.familyId ? '' : location.origin + location.pathname + (S.familyKey ? '#k=' + fmtKey(S.familyKey) : '#f=' + S.familyId);
 
 /* ---- writes: one at a time per document, one retry on a transient failure ---- */
 const queues = new Map();
@@ -858,17 +902,25 @@ function render() {
 function renderNotice() {
   const n = [];
   if (S.mode === 'connecting') n.push(['', '正在连接家庭共享数据…']);
+  if (S.mode === 'nodb') n.push(['block', S.hasClaude
+    ? '没有连上共享数据，所以现在不能写：写了家人也看不到。请先登录 claude.ai，再从 claude.ai 里打开这个页面（不要用“在新窗口打开”单独打开）。如果登录后还是这样，告诉 Claude。'
+    : window.BBWY_SITE
+      ? '这个网站还没连上数据库，所以现在不能写：写了家人也看不到。需要先把 Firebase 配置填进 config.js。'
+      : '这是网页的源文件，直接打开不会和家人同步，所以不能写。请打开家庭计划板的链接：https://claude.ai/artifact/EyeeWY6SvMNf3yKfeEdYc4']);
+  if (S.mode === 'cloud' && S.isOwner && !shareNoteDismissed()) n.push(['owner', '只有你在右上角「分享」里邀请的人才能打开这个页面。邀请妈妈和儿子时，权限要选「编辑」，并且不要打开公开链接。']);
   if (S.mode === 'local') n.push(['warn', window.BBWY_SITE
     ? '这个网站还没连上数据库（config.js 里还没有 Firebase 配置），现在的数据只存在这台设备上，家人看不到。'
     : '本机模式：数据只存在这台设备的浏览器里，家人看不到。要全家共享，请登录 claude.ai，从分享给你的链接打开这个页面。']);
-  if (S.fbDenied) n.push(['warn', '数据库拒绝了访问。可能是 Firestore 的安全规则还没设置好，或者家庭链接不完整。']);
-  if (S.readOnly) n.push(['warn', S.mode === 'firebase' ? '保存失败了。请用完整的家庭链接重新打开页面再试。' : '你现在只能查看，不能修改。请让创建这个页面的人在「分享」里把你设为可以编辑。']);
+  if (S.fbDenied) n.push(['warn', '数据库拒绝了访问。可能是 Firestore 的安全规则有变化，请告诉 Claude。']);
+  if (S.readOnly) n.push(['warn', S.mode === 'firebase' ? '保存失败了。请在右上角「切换」里确认密钥，或重新输入密钥后再试。' : '你现在只能查看，不能修改。请让创建这个页面的人在「分享」里把你设为可以编辑。']);
   if (S.slow && !S.confirmed) n.push(['', '暂时连不上共享数据，显示的内容可能不是最新的。']);
   if (S.revoked) n.push(['warn', '访问权限有变化。刷新页面后再试。']);
   else if (S.subErr && !S.fbDenied) n.push(['warn', '和共享数据的连接断开了。刷新页面即可恢复。']);
-  $('#footText').textContent = S.mode === 'firebase' ? '步步为营 · 数据保存在你们自己的 Firebase 数据库里，拿到家庭链接的人才能打开。' : '步步为营 · 数据保存在这个页面的共享存储里，只有被分享的人能看到。';
+  $('#footText').textContent = S.mode === 'firebase' ? '步步为营 · 数据保存在你们自己的 Firebase 数据库里，只有输入同一个密钥的家人才能看到。' : '步步为营 · 数据保存在这个页面的共享存储里，只有被分享的人能看到。';
   $('#footShare').hidden = !(S.mode === 'firebase' && S.familyId);
-  $('#notice').innerHTML = n.map(([k, t]) => `<div class="note ${k ? 'note-' + k : ''}">${esc(t)}</div>`).join('');
+  $('#notice').innerHTML = n.map(([k, t]) => `<div class="note ${k ? 'note-' + k : ''}">` +
+    (k === 'owner' ? '<button class="x" type="button" data-act="dismiss-share" aria-label="知道了">×</button>' : '') + `${esc(t)}</div>`).join('');
+  renderSync();
 }
 function renderGoal() {
   if (S.goalEditing) return;
@@ -884,6 +936,14 @@ function renderGoal() {
   }
   const edit = canSon() ? `<button class="band-btn" type="button" data-act="goal-edit">${g.goal ? '修改' : '写目标'}</button>` : '';
   $('#goal').innerHTML = `<span class="goal-label">目标</span>${text}${cd}${edit}`;
+}
+function shareNoteDismissed() { try { return localStorage.getItem('bbwy-share-note') === '1'; } catch (e) { return false; } }
+function renderSync() {
+  const el = $('#sync');
+  const live = (S.mode === 'cloud' || S.mode === 'firebase') && S.confirmed && !S.subErr && !S.revoked && !S.fbDenied;
+  el.classList.toggle('off', !live && S.mode !== 'connecting');
+  el.textContent = live ? '● 实时同步中' : S.mode === 'connecting' ? '连接中…' : S.mode === 'local' ? '● 仅本机' : '● 未同步';
+  el.title = live ? '你写的内容会马上出现在家人的页面上' : '现在写的内容家人看不到';
 }
 function renderMe() {
   const b = $('#meBtn');
@@ -1350,6 +1410,10 @@ function showGate() {
   $('#gate').hidden = false;
   $('#famShare').hidden = !(S.mode === 'firebase' && S.familyId);
   $('#famLink').value = familyLink();
+  $('#famKeySmall').textContent = S.familyKey ? fmtKey(S.familyKey) : '';
+  $('#famKeySmall').hidden = $('#copyKeyBtn').hidden = !S.familyKey;
+  $('#famShareHint').textContent = S.familyKey ? '你们家的密钥（只发给家人）：' : '这个家庭用的是旧版家庭链接，可以复制后发给家人：';
+  S.confirmLeave = false; $('#leaveBtn').textContent = '这台设备换一个密钥';
   $('#gateClose').hidden = !S.role;
   document.querySelectorAll('#roleBtns button').forEach(b => b.setAttribute('aria-current', String(b.dataset.role === S.role)));
   const first = document.querySelector('#roleBtns button'); if (first) first.focus();
@@ -1579,12 +1643,18 @@ function bind() {
         const inp = $('#rdMin'); if (inp) inp.focus();
         break;
       }
-      case 'copy-family': {
-        const link = familyLink(); if (!link) break;
-        const fail = () => { showGate(); const i = $('#famLink'); if (i) { i.focus(); i.select(); } toast('没能自动复制。请长按上面的链接，手动复制。'); };
-        try { navigator.clipboard.writeText(link).then(() => toast('家庭链接已复制，用微信发给家人就行。'), fail); } catch (e) { fail(); }
+      case 'dismiss-share': try { localStorage.setItem('bbwy-share-note', '1'); } catch (e) { /* shows again next visit */ } renderNotice(); break;
+      case 'copy-family': case 'copy-key': {
+        const text = act === 'copy-key' ? (S.familyKey ? fmtKey(S.familyKey) : '') : familyLink(); if (!text) break;
+        const what = act === 'copy-key' ? '密钥' : '邀请链接';
+        const fail = () => toast('没能自动复制。请长按密钥手动复制：' + (S.familyKey ? fmtKey(S.familyKey) : text));
+        try { navigator.clipboard.writeText(text).then(() => toast(what + '已复制，用微信发给家人就行。'), fail); } catch (e) { fail(); }
         break;
       }
+      case 'leave-family':
+        if (!S.confirmLeave) { S.confirmLeave = true; el.textContent = '再点一次：这台设备退出当前家庭（数据不会删除，输入密钥可以回来）'; break; }
+        try { localStorage.removeItem('bbwy-family'); localStorage.removeItem('bbwy-key'); } catch (e) { /* ignore */ }
+        location.hash = ''; location.reload(); break;
       case 'rd-cancel': S.readEditing = null; render(); break;
       case 'rd-clear': {
         const f = $('#readForm'); if (!f || S.role !== f.dataset.who || !canWrite()) break;
@@ -1653,25 +1723,132 @@ function subscribe() {
   }, onErr);
 }
 
+function saveFamily(fid, key) {
+  try { localStorage.setItem('bbwy-family', fid); if (key) localStorage.setItem('bbwy-key', key); else localStorage.removeItem('bbwy-key'); }
+  catch (e) { /* this device will need the key again next time */ }
+}
+const famError = msg => { const e = $('#famErr'); e.textContent = msg; e.hidden = !msg; };
+function showFamGate() { render(); renderFamGate(); $('#famStart').hidden = false; $('#famMade').hidden = true; $('#famGate').hidden = false; }
+// A device that used the first website version remembers a family folder but no key. It gets the same choice
+// (create or join), and whichever it picks carries that folder's content into the keyed family, then retires it.
+const FAMILY_COLS = ['tasks', 'days', 'cheers', 'rewards', 'reviews', 'ideas', 'reading', 'config'];
+function renderFamGate() {
+  const note = $('#famLegacy'), legacy = S.legacyFid;
+  note.hidden = !legacy;
+  if (legacy && S.legacyMoved) {
+    note.textContent = '你们家已经改用密钥了。请在下面输入家人发给你的密钥。';
+    $('#famCreateH').textContent = '家里还没有人有密钥';
+    $('#famCreateHint').textContent = '只在全家都没有密钥时才用：会创建一个新的、空的家庭。';
+  } else if (legacy) {
+    note.textContent = '网站已经升级成用密钥了。这台设备之前建过一个家庭（旧版，没有密钥），里面已经写的内容不会丢：不管点「创建密钥」还是「加入」，都会一起带过去。';
+    $('#famCreateH').textContent = '还没有密钥';
+    $('#famCreateHint').textContent = '创建密钥，并带上这台设备上已经写的内容，再用微信把密钥发给家人。';
+  } else {
+    $('#famCreateH').textContent = '第一次用';
+    $('#famCreateHint').textContent = '由一个人创建密钥，再用微信发给家人。';
+  }
+}
+async function legacyGate(oldFid) {
+  S.legacyFid = oldFid; S.legacyMoved = false;
+  showFamGate();
+  try {
+    const s = await S.fdb.collection('families').doc(oldFid).collection('config').doc('family').get({source: 'server'});
+    S.legacyMoved = !!(s.exists && s.data() && s.data().moved);
+  } catch (e) { /* offline: offer both choices; moving needs the network and says so */ }
+  renderFamGate();
+}
+// Copy the old folder into the new one (never overwriting a document the new family already has), straight from the server.
+async function moveLegacy(oldFid, newFid) {
+  const base = id => S.fdb.collection('families').doc(id);
+  const docs = [];
+  for (const c of FAMILY_COLS) {
+    const [src, dst] = await Promise.all([base(oldFid).collection(c).get({source: 'server'}), base(newFid).collection(c).get({source: 'server'})]);
+    const have = new Set(dst.docs.map(d => d.id));
+    src.forEach(d => { if (!(c === 'config' && d.id === 'family') && !have.has(d.id)) docs.push({c, id: d.id, data: d.data()}); });
+  }
+  for (let i = 0; i < docs.length; i += 400) {
+    const b = S.fdb.batch(); docs.slice(i, i + 400).forEach(d => b.set(base(newFid).collection(d.c).doc(d.id), d.data)); await b.commit();
+  }
+  return docs;
+}
+// Mark the old folder as moved first (so another old device is told to ask for the key), then remove the copies.
+async function retireLegacy(oldFid, docs) {
+  const base = S.fdb.collection('families').doc(oldFid);
+  await base.collection('config').doc('family').set({moved: true, movedAt: nowIso()});
+  for (let i = 0; i < docs.length; i += 400) {
+    const b = S.fdb.batch(); docs.slice(i, i + 400).forEach(d => b.delete(base.collection(d.c).doc(d.id))); await b.commit();
+  }
+}
+async function bringLegacy(newFid, key) {
+  const old = S.legacyFid && !S.legacyMoved && S.legacyFid !== newFid ? S.legacyFid : null;
+  if (!old) { saveFamily(newFid, key); return 0; }
+  const docs = await moveLegacy(old, newFid);
+  saveFamily(newFid, key);                       // the new family now holds everything: switch to it before tidying up
+  S.legacyFid = null;
+  try { await retireLegacy(old, docs); } catch (e) { /* the old copies stay where they were; harmless */ }
+  return docs.length;
+}
+async function joinFamily(raw) {
+  const k = normKey(raw);
+  if (!KEY_RE.test(k)) { famError('密钥格式不对：应该是 20 个字母和数字，横线可加可不加。'); return; }
+  famError(''); const btn = $('#famJoinBtn'); btn.disabled = true; btn.textContent = '查找中…';
+  try {
+    const fid = await familyIdOf(k);
+    const snap = await S.fdb.collection('families').doc(fid).collection('config').doc('family').get();
+    if (!snap.exists) { famError('没有找到这个密钥对应的家庭。请检查有没有输错，或者让家人再发一次。'); return; }
+    if (S.legacyFid && !S.legacyMoved) btn.textContent = '正在合并已有内容…';
+    const n = await bringLegacy(fid, k);
+    if (n) toast('已把这台设备上的 ' + n + ' 条内容合并进来。');
+    S.familyKey = k; $('#famGate').hidden = true; startFamily(fid);
+  } catch (e) {
+    famError(e && e.code === 'permission-denied' ? '数据库拒绝了访问，请告诉 Claude。' : '暂时连不上数据库。检查一下网络，再点一次「加入」。已经写的内容不会丢。');
+  } finally { btn.disabled = false; btn.textContent = '加入'; }
+}
+async function createFamily() {
+  const btn = $('#famCreate'); btn.disabled = true;
+  const moving = !!(S.legacyFid && !S.legacyMoved);
+  try {
+    const k = newKey(), fid = await familyIdOf(k);
+    const marker = S.fdb.collection('families').doc(fid).collection('config').doc('family');
+    if (moving) {
+      btn.textContent = '正在搬已有内容…（需要联网）';
+      await marker.set({createdAt: nowIso(), v: 1});
+      const n = await bringLegacy(fid, k);
+      toast(n ? '已把 ' + n + ' 条已有内容搬到新密钥下。' : '旧家庭里还没有内容，已直接创建密钥。');
+    } else {
+      marker.set({createdAt: nowIso(), v: 1})
+        .catch(e => toast(e && e.code === 'permission-denied' ? '数据库拒绝了创建，请告诉 Claude。' : '密钥还没保存到数据库，联网后会自动补上。'));
+      saveFamily(fid, k);
+    }
+    S.familyKey = k;
+    $('#famKeyOut').textContent = fmtKey(k);
+    $('#famStart').hidden = true; $('#famMade').hidden = false;
+    $('#famContinue').onclick = () => { $('#famGate').hidden = true; startFamily(fid); };
+    S.familyId = fid;                                      // lets the copy buttons work before continuing
+  } catch (e) {
+    toast(moving ? '搬已有内容时没有完成（' + (e && e.code === 'permission-denied' ? '数据库拒绝' : '网络不通') + '）。原来的内容都还在，联网后再点一次「创建密钥」。'
+      : '这个浏览器创建不了密钥，请换 Chrome 或 Safari 再试。');
+  } finally { btn.disabled = false; btn.textContent = '创建密钥'; }
+}
 function bootFirebase(conf) {
   S.mode = 'nofamily';
-  let fid = null;
-  const m = /(?:^#|&)f=([A-Za-z0-9_-]{32,64})/.exec(location.hash);
-  if (m) {
-    fid = m[1];
-    try { localStorage.setItem('bbwy-family', fid); } catch (e) { /* this device will need the link again */ }
-    try { history.replaceState(null, '', location.pathname + location.search + '#today'); } catch (e) { /* ignore */ }
-    route();
-  } else { try { fid = localStorage.getItem('bbwy-family'); } catch (e) { fid = null; } }
-  if (fid && !FAMILY_RE.test(fid)) fid = null;
   try { S.fdb = (firebase.apps.length ? firebase.app() : firebase.initializeApp(conf)).firestore(); }
-  catch (e) { S.store = localStore(); S.mode = 'local'; subscribe(); askRole(); return; }
-  $('#famCreate').onclick = () => {
-    const id = newFamilyId();
-    try { localStorage.setItem('bbwy-family', id); } catch (e) { /* ignore */ }
-    $('#famGate').hidden = true; startFamily(id);
-  };
-  if (fid) startFamily(fid); else { render(); $('#famGate').hidden = false; }
+  catch (e) { S.mode = 'nodb'; render(); return; }
+  $('#famCreate').onclick = createFamily;
+  $('#famJoinForm').addEventListener('submit', e => { e.preventDefault(); joinFamily($('#famKeyIn').value); });
+  // An invitation link (#k=KEY) joins at once; an older family link (#f=FOLDER) still works.
+  const mk = /(?:^#|&)k=([0-9A-Za-z-]{20,40})/.exec(location.hash);
+  const mf = /(?:^#|&)f=([A-Za-z0-9_-]{32,64})/.exec(location.hash);
+  if (mk || mf) { try { history.replaceState(null, '', location.pathname + location.search + '#today'); } catch (e) { /* ignore */ } route(); }
+  let fid = null, key = null;
+  try { fid = localStorage.getItem('bbwy-family'); key = localStorage.getItem('bbwy-key'); } catch (e) { /* ignore */ }
+  if (fid && !FAMILY_RE.test(fid)) fid = null;
+  if (key && !KEY_RE.test(key)) key = null;
+  if (mk) { if (fid && !key) S.legacyFid = fid; showFamGate(); $('#famKeyIn').value = mk[1]; joinFamily(mk[1]); return; }
+  if (mf) { legacyGate(mf[1]); return; }          // a link from the first version: offer the key, bring its content
+  if (fid && key) { S.familyKey = key; startFamily(fid); }
+  else if (fid) legacyGate(fid);
+  else showFamGate();
 }
 function startFamily(fid) {
   S.familyId = fid; S.store = firestoreStore(S.fdb, fid); S.mode = 'firebase';
@@ -1693,8 +1870,10 @@ async function boot() {
   const hasClaude = !!(c && typeof c.use === 'function');
   let db = null;
   if (hasClaude) { try { db = await c.use('db'); } catch (e) { db = null; } }
+  S.hasClaude = hasClaude;
   if (db) { S.store = cloudStore(db); S.mode = 'cloud'; }
-  else { S.store = localStore(); S.mode = 'local'; }
+  else if (/[?&]local=1(&|$)/.test(location.search)) { S.store = localStore(); S.mode = 'local'; }
+  else { S.mode = 'nodb'; render(); return; }   // writing here would reach nobody, so do not offer it
 
   let role = null;
   try { role = localStorage.getItem('bbwy-role'); } catch (e) { role = null; }
@@ -1702,6 +1881,7 @@ async function boot() {
     let user = null;
     try { user = await c.use('user'); } catch (e) { user = null; }
     if (user) {
+      try { S.isOwner = !!(await user.isOwner()); } catch (e) { S.isOwner = false; }
       try { S.uid = await user.id(); } catch (e) { S.uid = null; }
       try { if (await user.can('data.write') === false) S.readOnly = true; } catch (e) { /* unknown: keep controls */ }
       if (!ROLES[role] && S.uid) {
