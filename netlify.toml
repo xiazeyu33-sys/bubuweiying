@@ -1,4 +1,4 @@
-# Netlify 部署设置。在 Netlify 里把 Base directory 设为 planner/site，这个文件就会生效。
+# Netlify 部署设置。线上的 Netlify 项目从 xiazeyu33-sys/bubuweiying 仓库根目录部署，这个文件会被复制到那里（见 planner/publish_site.sh）。
 # 不需要构建步骤：直接发布这个文件夹。
 [build]
   publish = "."
