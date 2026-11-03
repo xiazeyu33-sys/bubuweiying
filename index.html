@@ -525,7 +525,7 @@ footer.wrap{padding-block:0 32px;color:var(--muted);font-size:12px}
     </ol>
   </details>
 </main>
-<footer class="wrap"><span id="footText">步步为营 · 数据保存在这个页面的共享存储里，只有被分享的人能看到。</span> <span id="appVer">· 版本 3（密钥版）</span>
+<footer class="wrap"><span id="footText">步步为营 · 数据保存在这个页面的共享存储里，只有被分享的人能看到。</span> <span id="appVer">· 版本 3.1（密钥版）</span>
   <button class="link-btn" type="button" id="footShare" data-act="copy-family" hidden>复制邀请链接</button></footer>
 
 <div class="overlay" id="famGate" hidden role="dialog" aria-modal="true" aria-labelledby="famT">
@@ -916,7 +916,7 @@ function renderNotice() {
   if (S.slow && !S.confirmed) n.push(['', '暂时连不上共享数据，显示的内容可能不是最新的。']);
   if (S.revoked) n.push(['warn', '访问权限有变化。刷新页面后再试。']);
   else if (S.subErr && !S.fbDenied) n.push(['warn', '和共享数据的连接断开了。刷新页面即可恢复。']);
-  $('#footText').textContent = S.mode === 'firebase' ? '步步为营 · 数据保存在你们自己的 Firebase 数据库里，只有输入同一个密钥的家人才能看到。' : '步步为营 · 数据保存在这个页面的共享存储里，只有被分享的人能看到。';
+  $('#footText').textContent = (S.mode === 'firebase' || window.BBWY_SITE) ? '步步为营 · 数据保存在你们自己的 Firebase 数据库里，只有输入同一个密钥的家人才能看到。' : '步步为营 · 数据保存在这个页面的共享存储里，只有被分享的人能看到。';
   $('#footShare').hidden = !(S.mode === 'firebase' && S.familyId);
   $('#notice').innerHTML = n.map(([k, t]) => `<div class="note ${k ? 'note-' + k : ''}">` +
     (k === 'owner' ? '<button class="x" type="button" data-act="dismiss-share" aria-label="知道了">×</button>' : '') + `${esc(t)}</div>`).join('');
@@ -927,6 +927,7 @@ function renderGoal() {
   const g = S.config || {};
   let text;
   if (g.goal) text = `<span class="goal-text">${esc(g.goal)}</span>`;
+  else if (S.mode === 'nofamily') text = `<span class="goal-text is-empty">加入家庭后显示</span>`;
   else if (!S.configLoaded) text = `<span class="goal-text is-empty">正在读取…</span>`;
   else text = `<span class="goal-text is-empty">${isSon() ? '写下你自己的大目标' : '等他写下自己的目标'}</span>`;
   let cd = '';
@@ -941,9 +942,10 @@ function shareNoteDismissed() { try { return localStorage.getItem('bbwy-share-no
 function renderSync() {
   const el = $('#sync');
   const live = (S.mode === 'cloud' || S.mode === 'firebase') && S.confirmed && !S.subErr && !S.revoked && !S.fbDenied;
-  el.classList.toggle('off', !live && S.mode !== 'connecting');
-  el.textContent = live ? '● 实时同步中' : S.mode === 'connecting' ? '连接中…' : S.mode === 'local' ? '● 仅本机' : '● 未同步';
-  el.title = live ? '你写的内容会马上出现在家人的页面上' : '现在写的内容家人看不到';
+  const waiting = S.mode === 'connecting' || S.mode === 'nofamily';
+  el.classList.toggle('off', !live && !waiting);
+  el.textContent = live ? '● 实时同步中' : S.mode === 'connecting' ? '连接中…' : S.mode === 'nofamily' ? '输入密钥后开始同步' : S.mode === 'local' ? '● 仅本机' : '● 未同步';
+  el.title = live ? '你写的内容会马上出现在家人的页面上' : waiting ? '创建或加入家庭后，就会和家人实时同步' : '现在写的内容家人看不到';
 }
 function renderMe() {
   const b = $('#meBtn');
